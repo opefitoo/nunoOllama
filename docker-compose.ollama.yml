@@ -63,6 +63,14 @@ services:
       start_period: 40s
     networks:
       - nuno-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nunoollama.rule=Host(`nunoollama.opefitoo.com`)"
+      - "traefik.http.routers.nunoollama.entrypoints=websecure"
+      - "traefik.http.routers.nunoollama.tls=true"
+      - "traefik.http.routers.nunoollama.tls.certresolver=letsencrypt"
+      - "traefik.http.services.nunoollama.loadbalancer.server.port=8001"
+      - "traefik.docker.network=nuno-network"
 
 volumes:
   ollama-data:
