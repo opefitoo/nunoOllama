@@ -3,8 +3,8 @@ version: '3.8'
 services:
   ai-planning:
     build:
-      context: ./docker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/Dockerfile
     container_name: nuno-ai-planning
     ports:
       - "8001:8001"
