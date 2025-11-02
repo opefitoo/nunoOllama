@@ -25,6 +25,9 @@ services:
 
       # Optional: Anthropic Configuration
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+
+      # API Key Authentication (protects /analyze-planning and /quick-advice endpoints)
+      - API_KEY=${API_KEY:-}
     volumes:
       # Mount local code for development (comment out for production)
       - ./docker/server.py:/app/server.py

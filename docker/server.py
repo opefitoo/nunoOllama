@@ -9,10 +9,12 @@ This service acts as an AI coach/orchestrator that:
 
 import os
 import json
+import secrets
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security, Depends
+from fastapi.security import APIKeyHeader, APIKeyQuery
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -39,6 +41,41 @@ orchestrator = PlanningOrchestrator(
     provider=os.getenv("LLM_PROVIDER", "deepseek"),  # deepseek, openai, anthropic
     model=os.getenv("LLM_MODEL", "deepseek-reasoner")
 )
+
+# ============================================================================
+# API Key Authentication
+# ============================================================================
+
+# Load API key from environment
+API_KEY = os.getenv("API_KEY")
+if not API_KEY:
+    # Generate a random key if not set (will be logged on startup)
+    API_KEY = secrets.token_urlsafe(32)
+    print(f"⚠️  WARNING: API_KEY not set in environment!")
+    print(f"🔑 Generated temporary API key: {API_KEY}")
+    print(f"   Set API_KEY environment variable for production use.")
+
+# Define security schemes (supports both header and query parameter)
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+api_key_query = APIKeyQuery(name="api_key", auto_error=False)
+
+
+async def get_api_key(
+    api_key_header: str = Security(api_key_header),
+    api_key_query: str = Security(api_key_query),
+) -> str:
+    """
+    Validate API key from header or query parameter.
+    Supports both X-API-Key header and ?api_key=XXX query parameter.
+    """
+    if api_key_header == API_KEY:
+        return api_key_header
+    if api_key_query == API_KEY:
+        return api_key_query
+    raise HTTPException(
+        status_code=403,
+        detail="Invalid or missing API key. Provide via X-API-Key header or ?api_key= query parameter."
+    )
 
 
 # ============================================================================
@@ -168,12 +205,17 @@ async def health_check():
 
 
 @app.post("/analyze-planning", response_model=OptimizerAdviceResponse)
-async def analyze_planning(request: OptimizerDiagnosticRequest):
+async def analyze_planning(
+    request: OptimizerDiagnosticRequest,
+    api_key: str = Depends(get_api_key)
+):
     """
     Analyze failed planning optimization and suggest constraint relaxations.
 
     This endpoint receives diagnostic data from a failed optimizer run and uses
     LLM reasoning to suggest strategic constraint relaxations.
+
+    **Authentication Required**: Provide API key via X-API-Key header or ?api_key= query parameter.
     """
     try:
         # Generate analysis
@@ -200,11 +242,17 @@ async def analyze_planning(request: OptimizerDiagnosticRequest):
 
 
 @app.post("/quick-advice")
-async def quick_advice(failure_message: str, strategies_attempted: List[str]):
+async def quick_advice(
+    failure_message: str,
+    strategies_attempted: List[str],
+    api_key: str = Depends(get_api_key)
+):
     """
     Quick advice endpoint for immediate guidance without full diagnostics.
 
     Useful for fast feedback during development/debugging.
+
+    **Authentication Required**: Provide API key via X-API-Key header or ?api_key= query parameter.
     """
     try:
         advice = await orchestrator.quick_advice(failure_message, strategies_attempted)
