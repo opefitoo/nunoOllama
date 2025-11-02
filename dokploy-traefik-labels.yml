@@ -1,0 +1,103 @@
+# Traefik Labels for Dokploy Deployment
+# Copy these labels to your service configuration in Dokploy
+
+# ==============================================================================
+# RECOMMENDED CONFIGURATION (Rate Limiting + Security Headers)
+# ==============================================================================
+
+# Rate Limiting Middleware
+# Allows 20 requests per minute on average, with bursts up to 50
+traefik.http.middlewares.nuno-ratelimit.ratelimit.average: "20"
+traefik.http.middlewares.nuno-ratelimit.ratelimit.burst: "50"
+traefik.http.middlewares.nuno-ratelimit.ratelimit.period: "1m"
+
+# Security Headers Middleware
+traefik.http.middlewares.nuno-security.headers.framedeny: "true"
+traefik.http.middlewares.nuno-security.headers.browserxssfilter: "true"
+traefik.http.middlewares.nuno-security.headers.contenttypenosniff: "true"
+traefik.http.middlewares.nuno-security.headers.forcestsheader: "true"
+traefik.http.middlewares.nuno-security.headers.stsincludesubdomains: "true"
+traefik.http.middlewares.nuno-security.headers.stsseconds: "31536000"
+traefik.http.middlewares.nuno-security.headers.customresponseheaders.X-Robots-Tag: "noindex,nofollow,nosnippet,noarchive,notranslate,noimageindex"
+
+# Apply middlewares to your router
+# Replace 'ai-planning-secure' with your actual router name from Dokploy
+traefik.http.routers.ai-planning-secure.middlewares: "nuno-ratelimit@docker,nuno-security@docker"
+
+# ==============================================================================
+# OPTIONAL: IP WHITELIST
+# Uncomment and configure if you want to restrict access to specific IPs
+# ==============================================================================
+
+# IP Whitelist Middleware
+# Replace with your actual allowed IPs or CIDR ranges
+# traefik.http.middlewares.nuno-ipfilter.ipwhitelist.sourcerange: "46.224.6.0/24,YOUR_OFFICE_IP,YOUR_HOME_IP"
+
+# Apply IP filter along with other middlewares
+# traefik.http.routers.ai-planning-secure.middlewares: "nuno-ipfilter@docker,nuno-ratelimit@docker,nuno-security@docker"
+
+# ==============================================================================
+# ALTERNATIVE: Block Specific IPs
+# ==============================================================================
+
+# To block specific IPs while allowing everyone else:
+# traefik.http.middlewares.nuno-ipblock.ipallowlist.sourcerange: "0.0.0.0/0,::/0"
+# traefik.http.middlewares.nuno-ipblock.ipallowlist.ipstrategy.excludedips: "BLOCKED_IP_1,BLOCKED_IP_2"
+
+# ==============================================================================
+# HOW TO APPLY IN DOKPLOY
+# ==============================================================================
+
+# 1. Go to your service in Dokploy
+# 2. Navigate to "Domains" section
+# 3. Find your domain (nunoollama.opefitoo.com)
+# 4. Look for "Custom Labels" or "Traefik Labels" section
+# 5. Add the labels above (one per line, or as YAML if supported)
+# 6. Save and redeploy the service
+
+# ==============================================================================
+# IMPORTANT NOTES
+# ==============================================================================
+
+# 1. Service Name: Make sure the "Service Name" dropdown in Dokploy is set to:
+#    ai-planning
+#    This MUST match the service name in your docker-compose.yml
+
+# 2. Router Name: The router name 'ai-planning-secure' is just an example.
+#    In Dokploy, check what router name Traefik is using for your service.
+#    You can see this in Traefik dashboard or logs.
+
+# 3. Testing: After applying, test with:
+#    curl -k https://nunoollama.opefitoo.com/health
+#    # Should work
+#
+#    # Test rate limiting:
+#    for i in {1..30}; do curl -k https://nunoollama.opefitoo.com/health; done
+#    # Should eventually get 429 Too Many Requests
+
+# 4. Monitoring: Check Traefik logs to see blocked requests:
+#    docker logs traefik -f
+
+# ==============================================================================
+# ADDITIONAL SECURITY MEASURES
+# ==============================================================================
+
+# After applying Traefik labels, also consider:
+
+# 1. Server-level firewall (UFW):
+#    sudo ufw enable
+#    sudo ufw allow 22/tcp
+#    sudo ufw allow 80/tcp
+#    sudo ufw allow 443/tcp
+
+# 2. Fail2Ban for automatic IP banning:
+#    sudo apt-get install fail2ban
+#    # Configure as per SECURITY.md
+
+# 3. Monitor access logs regularly:
+#    docker logs traefik | grep "404"
+#    docker logs nuno-ai-planning | grep "GET"
+
+# 4. Keep Docker images updated:
+#    docker-compose pull
+#    docker-compose up -d
