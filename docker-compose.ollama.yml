@@ -54,8 +54,7 @@ services:
       - ./docker/orchestrator.py:/app/orchestrator.py
     restart: unless-stopped
     depends_on:
-      ollama:
-        condition: service_healthy
+      - ollama
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
