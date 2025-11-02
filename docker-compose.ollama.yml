@@ -1,0 +1,71 @@
+version: '3.8'
+
+# Docker Compose configuration with Ollama running in a container
+# Use this for all-in-one deployment with local LLM
+
+services:
+  # Ollama service - runs the local LLM
+  ollama:
+    image: ollama/ollama:latest
+    container_name: nuno-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      # Persist downloaded models
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - nuno-network
+    # Uncomment for GPU acceleration (requires nvidia-docker)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # AI Planning Orchestrator - analyzes failed optimizations
+  ai-planning:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    container_name: nuno-ai-planning
+    ports:
+      - "8001:8001"
+    environment:
+      # Use Ollama running in Docker
+      - LLM_PROVIDER=ollama
+      - LLM_MODEL=${LLM_MODEL:-llama3.1:8b}
+      - LLM_API_KEY=not_needed_for_ollama
+      - OLLAMA_BASE_URL=http://ollama:11434/v1
+    volumes:
+      # Mount local code for development (comment out for production)
+      - ./docker/server.py:/app/server.py
+      - ./docker/orchestrator.py:/app/orchestrator.py
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - nuno-network
+
+volumes:
+  ollama-data:
+    driver: local
+
+networks:
+  nuno-network:
+    driver: bridge

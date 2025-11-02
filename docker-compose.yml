@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  ai-planning:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    container_name: nuno-ai-planning
+    ports:
+      - "8001:8001"
+    environment:
+      # LLM Provider Configuration
+      # Use 'ollama' for local LLM (recommended), or 'deepseek', 'openai', 'anthropic' for cloud
+      - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
+      - LLM_MODEL=${LLM_MODEL:-llama3.1:8b}
+      - LLM_API_KEY=${LLM_API_KEY:-not_needed_for_ollama}
+
+      # Ollama Configuration (when using local LLM)
+      # Use host.docker.internal when Ollama runs on host machine
+      # Use http://ollama:11434/v1 when using docker-compose.ollama.yml
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434/v1}
+
+      # Optional: OpenAI Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+      # Optional: Anthropic Configuration
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      # Mount local code for development (comment out for production)
+      - ./docker/server.py:/app/server.py
+      - ./docker/orchestrator.py:/app/orchestrator.py
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - nuno-network
+    extra_hosts:
+      # Allow container to access host machine (for Ollama on host)
+      - "host.docker.internal:host-gateway"
+
+networks:
+  nuno-network:
+    driver: bridge
