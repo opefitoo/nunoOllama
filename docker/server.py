@@ -148,6 +148,13 @@ class OptimizerDiagnosticRequest(BaseModel):
     notes: Optional[str] = None
 
 
+class CapacityAnalysis(BaseModel):
+    """Capacity analysis details"""
+    is_capacity_problem: bool
+    capacity_gap_percentage: Optional[float] = None
+    explanation: str
+
+
 class RelaxationSuggestion(BaseModel):
     """Suggested constraint relaxation"""
     priority: int  # 1=highest, lower numbers = try first
@@ -157,6 +164,7 @@ class RelaxationSuggestion(BaseModel):
     expected_impact: str
     implementation_code: Optional[str] = None
     risk_level: str  # 'low', 'medium', 'high'
+    trade_offs: Optional[str] = None  # What this change sacrifices
 
 
 class OptimizerAdviceResponse(BaseModel):
@@ -166,6 +174,7 @@ class OptimizerAdviceResponse(BaseModel):
 
     # Root cause analysis
     root_cause_summary: str
+    capacity_analysis: Optional[CapacityAnalysis] = None
     critical_issues: List[str]
 
     # Suggested strategy ladder
@@ -221,10 +230,16 @@ async def analyze_planning(
         # Generate analysis
         advice = await orchestrator.analyze_and_suggest(request.dict())
 
+        # Extract capacity analysis if available
+        capacity_analysis = None
+        if "capacity_analysis" in advice:
+            capacity_analysis = CapacityAnalysis(**advice["capacity_analysis"])
+
         return OptimizerAdviceResponse(
             analysis_timestamp=datetime.utcnow().isoformat(),
             planning_id=request.planning_id,
             root_cause_summary=advice["root_cause_summary"],
+            capacity_analysis=capacity_analysis,
             critical_issues=advice["critical_issues"],
             relaxation_suggestions=[
                 RelaxationSuggestion(**suggestion)

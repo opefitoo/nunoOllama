@@ -166,62 +166,136 @@ Weekend days: {len(weekend_days)}
 ## Detected Constraint Violations
 {self._format_violations(constraint_violations)}
 
-## Key Constraints (Luxembourg Labor Law)
-1. Maximum 5 consecutive work days
-2. Minimum 2 consecutive OFF days (44h rest period)
-3. No weekend work (all employees OFF on Sat/Sun)
-4. Interns must have 'cours' shift on school days
-5. Holiday requests must be honored
-6. Contract hours must be respected (varying between 32-40h/week)
+## Luxembourg Labor Law Constraints (PRIORITY ORDER)
+When suggesting relaxations, consider these constraints in this priority order (HIGHER number = HIGHER priority to maintain):
+
+**PRIORITY 5 (NEVER RELAX - Legal Requirements):**
+- Holiday requests must be honored (legal right)
+- 44-hour rest period between work weeks (EU directive)
+
+**PRIORITY 4 (AVOID RELAXING - Core Legal):**
+- Maximum 5 consecutive work days (Luxembourg labor law)
+- Minimum 2 consecutive OFF days per week
+- Interns must have 'cours' shift on school days (educational requirement)
+
+**PRIORITY 3 (RELAXABLE WITH JUSTIFICATION - Operational):**
+- No weekend work policy (operational preference, not legal)
+- Preferred shift patterns per employee
+
+**PRIORITY 2 (OFTEN RELAXABLE - Optimization):**
+- Contract hours distribution across month (32-40h/week can be averaged over month)
+- Shift type preferences (MATIN vs APREM)
+- Consecutive shift limits beyond legal minimum
+
+**PRIORITY 1 (FIRST TO RELAX - Soft Constraints):**
+- Coverage "preferences" vs "requirements" (if min is met)
+- Work pattern distribution (e.g., spreading shifts evenly)
+- Load balancing between employees
+
+# REASONING FRAMEWORK
+
+Before suggesting relaxations, analyze:
+
+1. **Root Cause Identification:**
+   - Is this a CAPACITY problem (not enough employees/hours)?
+   - Is this a CONSTRAINT problem (constraints too tight)?
+   - Is this BOTH (capacity issue + rigid constraints)?
+
+2. **Capacity Analysis:**
+   - Total available hours: {data.get("total_employees")} employees × avg hours
+   - Required coverage hours: {data.get("min_daily_coverage")} per day × {len(daily_diagnostics)} days
+   - Gap analysis: If capacity gap > 20%, constraint relaxation alone won't solve it
+
+3. **Constraint Conflicts:**
+   - Which constraints are in direct conflict?
+   - Are there cascading effects (relaxing A allows B to be satisfied)?
+   - What's the minimum set of relaxations needed?
 
 # YOUR TASK
 
-Analyze this failed optimization and provide:
+Analyze this failed optimization and provide a structured response:
 
-1. **Root Cause Analysis**: What is the fundamental reason this optimization is INFEASIBLE?
+## 1. Root Cause Analysis
+Identify the PRIMARY reason this is INFEASIBLE:
+- Insufficient capacity (need more employees/hours)
+- Over-constrained (constraints too strict even with adequate capacity)
+- Combination (both issues present)
 
-2. **Critical Issues**: List 3-5 critical issues (capacity gaps, conflicting constraints, etc.)
+## 2. Critical Issues
+List 3-5 specific, actionable issues:
+- Each issue should point to a measurable problem
+- Include the magnitude/severity
+- Explain WHY it's causing INFEASIBLE status
 
-3. **Relaxation Strategy Ladder**: Suggest 4-6 constraint relaxations in priority order (1=try first):
-   - What constraint to relax
-   - How to relax it
-   - Expected impact
-   - Risk level (low/medium/high)
-   - Specific implementation guidance
+## 3. Relaxation Strategy Ladder (4-6 suggestions)
+Provide suggestions in PRIORITY ORDER (try #1 first):
 
-4. **Long-term Recommendations**: Suggest 2-3 structural improvements to prevent future failures
+For EACH suggestion specify:
+- **What** constraint to relax (be specific)
+- **How** to relax it (concrete modification)
+- **Why** this will help (expected impact)
+- **Risk level**: low/medium/high (based on priority framework above)
+- **Implementation**: Python code snippet showing the change
+- **Trade-offs**: What you lose by making this change
+
+## 4. Long-term Recommendations
+Suggest 2-3 structural improvements:
+- Hiring needs (if capacity issue)
+- Policy changes (if constraints too strict)
+- Process improvements
 
 # OUTPUT FORMAT
 
-Respond with valid JSON:
+Respond with ONLY valid JSON (no markdown, no code blocks, no extra text):
 
 {{
-  "root_cause_summary": "1-2 sentence summary of why this is INFEASIBLE",
+  "root_cause_summary": "Clear 1-2 sentence diagnosis identifying if this is a capacity issue, constraint issue, or both",
+  "capacity_analysis": {{
+    "is_capacity_problem": true/false,
+    "capacity_gap_percentage": <number or null>,
+    "explanation": "Brief explanation of capacity situation"
+  }},
   "critical_issues": [
-    "Issue 1 description",
-    "Issue 2 description",
-    ...
+    "Specific issue with measurable impact (e.g., 'Days 15-20 need 5 staff but only 3 available')",
+    "Another specific issue..."
   ],
   "relaxation_suggestions": [
     {{
       "priority": 1,
-      "constraint_to_relax": "Name of constraint",
-      "relaxation_strategy": "How to relax it",
-      "description": "Detailed explanation",
-      "expected_impact": "What this will achieve",
-      "implementation_code": "Python code snippet if applicable",
-      "risk_level": "low|medium|high"
+      "constraint_to_relax": "Specific constraint name (e.g., 'Weekend work prohibition')",
+      "relaxation_strategy": "How to relax (e.g., 'Allow 1 weekend shift per month per employee')",
+      "description": "Detailed explanation of why this is priority #1 and what it achieves",
+      "expected_impact": "Quantified impact if possible (e.g., 'Adds 8 available shifts for weekend coverage')",
+      "implementation_code": "# Python code snippet showing the constraint modification\\nmodel.Add(weekend_shifts <= 1)",
+      "risk_level": "low|medium|high",
+      "trade_offs": "What this change sacrifices (e.g., 'Reduces rest days for affected employees')"
     }},
-    ...
+    {{
+      "priority": 2,
+      "constraint_to_relax": "...",
+      "relaxation_strategy": "...",
+      "description": "...",
+      "expected_impact": "...",
+      "implementation_code": "...",
+      "risk_level": "low|medium|high",
+      "trade_offs": "..."
+    }}
   ],
   "long_term_recommendations": [
-    "Recommendation 1",
-    "Recommendation 2",
-    ...
+    "Specific recommendation with rationale",
+    "Another recommendation..."
   ]
 }}
 
-Think step by step. Consider the capacity gaps, constraint interactions, and Luxembourg labor law requirements.
+# IMPORTANT REMINDERS:
+- Start your response with {{ and end with }}
+- Use double quotes for all JSON strings
+- Escape any quotes within strings
+- Be SPECIFIC not generic (bad: "relax constraints", good: "Allow 1 weekend shift per employee per month")
+- Include actual Python code in implementation_code fields
+- Focus on ACTIONABLE advice, not just descriptions of problems
+
+Think step-by-step through the analysis before generating your JSON response.
 """
 
         return prompt
@@ -253,7 +327,7 @@ Think step by step. Consider the capacity gaps, constraint interactions, and Lux
             )
         return "\n".join(lines)
 
-    async def _call_llm(self, prompt: str, max_tokens: int = 2000) -> Dict[str, Any]:
+    async def _call_llm(self, prompt: str, max_tokens: int = 4000) -> Dict[str, Any]:
         """
         Call LLM provider API.
 
@@ -289,7 +363,20 @@ Think step by step. Consider the capacity gaps, constraint interactions, and Lux
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are an expert in constraint programming and optimization."
+                            "content": """You are an expert in constraint programming, operations research, and workforce scheduling optimization.
+You have deep knowledge of:
+- Google OR-Tools CP-SAT solver and constraint satisfaction problems
+- Employee scheduling algorithms and heuristics
+- Labor law compliance (especially European/Luxembourg regulations)
+- Strategic constraint relaxation techniques
+- Trade-offs between operational efficiency and legal compliance
+
+When analyzing scheduling failures, you:
+1. Think systematically about root causes (capacity, constraints, or both)
+2. Consider constraint interdependencies and cascading effects
+3. Prioritize suggestions by feasibility and impact
+4. Provide specific, actionable implementation guidance
+5. Always respond with valid, well-formatted JSON when requested"""
                         },
                         {
                             "role": "user",
@@ -297,7 +384,7 @@ Think step by step. Consider the capacity gaps, constraint interactions, and Lux
                         }
                     ],
                     "max_tokens": max_tokens,
-                    "temperature": 0.7
+                    "temperature": 0.8
                 }
             )
             response.raise_for_status()
@@ -324,7 +411,20 @@ Think step by step. Consider the capacity gaps, constraint interactions, and Lux
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are an expert in constraint programming and optimization."
+                            "content": """You are an expert in constraint programming, operations research, and workforce scheduling optimization.
+You have deep knowledge of:
+- Google OR-Tools CP-SAT solver and constraint satisfaction problems
+- Employee scheduling algorithms and heuristics
+- Labor law compliance (especially European/Luxembourg regulations)
+- Strategic constraint relaxation techniques
+- Trade-offs between operational efficiency and legal compliance
+
+When analyzing scheduling failures, you:
+1. Think systematically about root causes (capacity, constraints, or both)
+2. Consider constraint interdependencies and cascading effects
+3. Prioritize suggestions by feasibility and impact
+4. Provide specific, actionable implementation guidance
+5. Always respond with valid, well-formatted JSON when requested"""
                         },
                         {
                             "role": "user",
@@ -332,7 +432,7 @@ Think step by step. Consider the capacity gaps, constraint interactions, and Lux
                         }
                     ],
                     "max_tokens": max_tokens,
-                    "temperature": 0.7
+                    "temperature": 0.8
                 }
             )
             response.raise_for_status()
@@ -363,7 +463,7 @@ Think step by step. Consider the capacity gaps, constraint interactions, and Lux
                         }
                     ],
                     "max_tokens": max_tokens,
-                    "temperature": 0.7
+                    "temperature": 0.8
                 }
             )
             response.raise_for_status()
@@ -394,7 +494,22 @@ Think step by step. Consider the capacity gaps, constraint interactions, and Lux
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are an expert in constraint programming and optimization. Provide clear, structured analysis in JSON format when requested."
+                            "content": """You are an expert in constraint programming, operations research, and workforce scheduling optimization.
+You have deep knowledge of:
+- Google OR-Tools CP-SAT solver and constraint satisfaction problems
+- Employee scheduling algorithms and heuristics
+- Labor law compliance (especially European/Luxembourg regulations)
+- Strategic constraint relaxation techniques
+- Trade-offs between operational efficiency and legal compliance
+
+When analyzing scheduling failures, you MUST:
+1. Think systematically about root causes (capacity, constraints, or both)
+2. Consider constraint interdependencies and cascading effects
+3. Prioritize suggestions by feasibility and impact
+4. Provide specific, actionable implementation guidance with code snippets
+5. ALWAYS respond with valid, well-formatted JSON - no markdown, no code blocks, just pure JSON
+6. Be very specific about which constraints to relax and HOW to relax them
+7. Consider the Luxembourg labor law constraints and their legal implications"""
                         },
                         {
                             "role": "user",
@@ -402,7 +517,7 @@ Think step by step. Consider the capacity gaps, constraint interactions, and Lux
                         }
                     ],
                     "max_tokens": max_tokens,
-                    "temperature": 0.7,
+                    "temperature": 0.8,
                     "stream": False
                 }
             )
